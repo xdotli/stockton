@@ -11,9 +11,7 @@ export default function Home({ searchParams }: PageProps) {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <Suspense fallback={<div>Loading...</div>}>
-        <StockChart initialStock={symbol} initialDataKey={dataKey} />
-      </Suspense>
+      <StockChart initialStock={symbol} initialDataKey="price" />
     </main>
   );
 }

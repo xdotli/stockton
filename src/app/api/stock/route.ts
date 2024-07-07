@@ -1,22 +1,14 @@
 import { NextResponse } from "next/server";
 
-interface AlphaVantageResponse {
-  "Meta Data": {
-    "1. Information": string;
-    "2. Symbol": string;
-    "3. Last Refreshed": string;
-    "4. Output Size": string;
-    "5. Time Zone": string;
-  };
-  "Time Series (Daily)": {
-    [date: string]: {
-      "1. open": string;
-      "2. high": string;
-      "3. low": string;
-      "4. close": string;
-      "5. volume": string;
-    };
-  };
+interface PolygonDataPoint {
+  c: number;
+  h: number;
+  l: number;
+  n: number;
+  o: number;
+  t: number;
+  v: number;
+  vw: number;
 }
 
 interface FormattedDataPoint {
@@ -28,29 +20,67 @@ interface FormattedDataPoint {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get("symbol");
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+  const apiKey = process.env.POLYGON_API_KEY;
 
   if (!symbol) {
     return NextResponse.json({ error: "Symbol is required" }, { status: 400 });
   }
 
-  const response = await fetch(
-    `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`,
-  );
-  const data: AlphaVantageResponse = await response.json();
+  const endDate = new Date().toISOString().split("T")[0];
+  const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000 * 8)
+    .toISOString()
+    .split("T")[0];
 
-  if ("Error Message" in data) {
-    return NextResponse.json({ error: data["Error Message"] }, { status: 400 });
+  const url = `https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${startDate}/${endDate}?apiKey=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Failed to fetch stock data");
+    }
+    const data = await response.json();
+
+    if (data.resultsCount === 0) {
+      return NextResponse.json(
+        { error: "No data available for this symbol" },
+        { status: 404 },
+      );
+    }
+
+    const formattedData: FormattedDataPoint[] = data.results.map(
+      (item: PolygonDataPoint) => ({
+        date: new Date(item.t).toISOString().split("T")[0],
+        price: item.c,
+        volume: item.v,
+      }),
+    );
+
+    // Sort the data by date in ascending order
+    formattedData.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+
+    const result = Array.from([
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+      ...formattedData,
+    ]);
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("Error fetching stock data:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch stock data" },
+      { status: 500 },
+    );
   }
-
-  const timeSeries = data["Time Series (Daily)"];
-  const formattedData: FormattedDataPoint[] = Object.entries(timeSeries)
-    .slice(0, 100)
-    .map(([date, values]) => ({
-      date,
-      price: parseFloat(values["4. close"]),
-      volume: parseInt(values["5. volume"]),
-    }));
-
-  return NextResponse.json(formattedData);
 }

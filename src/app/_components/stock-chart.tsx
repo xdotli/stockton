@@ -2,6 +2,7 @@ import React from "react";
 import BarChart from "@/app/_components/bar-chart";
 import StockSelector from "@/app/_components/stock-selector";
 import DataKeySelector from "@/app/_components/date-key-selector";
+import { Suspense } from "react";
 
 interface StockChartProps {
   initialStock: string;
@@ -17,7 +18,9 @@ const StockChart: React.FC<StockChartProps> = ({
       <h1 className="mb-4 text-2xl font-bold">Stock Bar Chart</h1>
       <StockSelector initialStock={initialStock} />
       <DataKeySelector initialDataKey={initialDataKey} />
-      <BarChart symbol={initialStock} dataKey={initialDataKey} />
+      <Suspense fallback={<div>Loading...</div>}>
+        <BarChart symbol={initialStock} dataKey={initialDataKey} />
+      </Suspense>
     </div>
   );
 };
